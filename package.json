@@ -1,6 +1,6 @@
 {
-  "name": "mns",
-  "version": "1.0.0",
+  "name": "@alicloud/mns",
+  "version": "1.0.0-beta",
   "description": "",
   "main": "index.js",
   "directories": {
