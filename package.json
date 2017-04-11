@@ -1,0 +1,21 @@
+{
+  "name": "mns",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "debug": "^2.6.3",
+    "httpx": "^2.1.1",
+    "kitx": "^1.2.0",
+    "xml2js": "^0.4.17"
+  },
+  "files": ["lib", "index.js"]
+}
