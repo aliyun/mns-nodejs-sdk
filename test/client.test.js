@@ -71,7 +71,7 @@ describe('client test', function () {
       await client.listQueue();
     } catch (ex) {
       expect(ex.name).to.be('MNSInvalidAccessKeyIdError');
-      expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, message: The access Id you provided is not exist\./);
+      expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The access Id you provided is not exist\./);
     }
   });
 
@@ -86,7 +86,7 @@ describe('client test', function () {
         await client.listQueue();
       } catch (ex) {
         expect(ex.name).to.be('MNSAccessDeniedError');
-        expect(ex.message).to.match(/GET http:\/\/accountid.mns.cn-shanghai.aliyuncs.com\/queues failed with 403. requestid: .{24}, message: The OwnerId that your Access Key Id associated to is forbidden for this operation./);
+        expect(ex.message).to.match(/GET http:\/\/accountid.mns.cn-shanghai.aliyuncs.com\/queues failed with 403. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The OwnerId that your Access Key Id associated to is forbidden for this operation./);
       }
     })();
   });
