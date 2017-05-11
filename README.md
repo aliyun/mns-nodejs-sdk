@@ -13,6 +13,9 @@
 
 Documents: http://doxmate.cool/aliyun/mns-nodejs-sdk/api.html
 
+
+> 该 SDK 并未完全实现所有文档所提及的功能，如果您想使用的功能并未实现，请提[issue](https://github.com/aliyun/mns-nodejs-sdk/issues/new)以增加优先级。
+
 ## Installation
 
 ```bash
@@ -28,8 +31,6 @@ See: https://help.aliyun.com/document_detail/27475.html
 ```sh
 ACCOUNT_ID=<ACCOUNT_ID> ACCESS_KEY_ID=<ACCESS_KEY_ID> ACCESS_KEY_SECRET=<ACCESS_KEY_SECRET> make test
 ```
-
-> 该 SDK 并未完全实现所有文档所提及的功能，如果您想使用的功能并未实现，请提[issue](https://github.com/aliyun/aliyun-mns-nodejs-sdk/issues/new)以增加优先级。
 
 ## Installation
 
