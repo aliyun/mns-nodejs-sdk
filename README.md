@@ -7,7 +7,7 @@
 [npm-image]: https://img.shields.io/npm/v/@alicloud/mns.svg?style=flat-square
 [npm-url]: https://npmjs.org/package/@alicloud/mns
 [travis-image]: https://img.shields.io/travis/aliyun/mns-nodejs-sdk/master.svg?style=flat-square
-[travis-url]: https://travis-ci.org/aliyun/nodejs-sdk.svg?branch=master
+[travis-url]: https://travis-ci.org/aliyun/mns-nodejs-sdk.svg?branch=master
 [cov-image]: https://coveralls.io/repos/aliyun/mns-nodejs-sdk/badge.svg?branch=master&service=github
 [cov-url]: https://coveralls.io/github/aliyun/mns-nodejs-sdk?branch=master
 
