@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "make test"
   },
   "author": "Jackson Tian",
   "license": "MIT",
@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aliyun/aliyun-mns-nodejs-sdk.git"
+    "url": "git+https://github.com/aliyun/mns-nodejs-sdk.git"
   },
   "keywords": [
     "MNS",
@@ -38,7 +38,7 @@
     "Alicloud"
   ],
   "bugs": {
-    "url": "https://github.com/aliyun/aliyun-mns-nodejs-sdk/issues"
+    "url": "https://github.com/aliyun/mns-nodejs-sdk/issues"
   },
-  "homepage": "https://github.com/aliyun/aliyun-mns-nodejs-sdk#readme"
+  "homepage": "https://github.com/aliyun/mns-nodejs-sdk#readme"
 }
