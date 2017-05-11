@@ -21,7 +21,11 @@
     "lib",
     "index.js"
   ],
-  "devDependencies": {},
+  "devDependencies": {
+    "expect.js": "^0.3.1",
+    "mocha": "^3.3.0",
+    "nyc": "^10.3.2"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aliyun/aliyun-mns-nodejs-sdk.git"
