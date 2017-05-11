@@ -1,8 +1,5 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-
 const expect = require('expect.js');
 
 const Client = require('../');
@@ -131,8 +128,8 @@ describe('client test', function () {
       expect(response).to.be.ok();
       expect(response.code).to.be(200);
       const body = response.body;
-      expect(response.body.length).to.above(0);
-      const [queue] = response.body;
+      expect(body.length).to.above(0);
+      const [queue] = body;
       expect(queue).to.have.property('QueueURL', 'http://1273463468343151.mns.cn-shanghai.aliyuncs.com/queues/test-queue');
     });
 
@@ -226,8 +223,8 @@ describe('client test', function () {
       expect(response).to.be.ok();
       expect(response.code).to.be(200);
       const body = response.body;
-      expect(response.body.length).to.above(0);
-      const [topic] = response.body;
+      expect(body.length).to.above(0);
+      const [topic] = body;
       expect(topic).to.have.property('TopicURL', 'http://1273463468343151.mns.cn-shanghai.aliyuncs.com/topics/test-topic');
     });
 
