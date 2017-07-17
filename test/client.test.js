@@ -92,9 +92,9 @@ describe('client test', function () {
   });
 
   it('sign', function() {
-    const client = new Client(ACCOUNT_ID, {
-      accessKeyID: ACCESS_KEY_ID,
-      accessKeySecret: ACCESS_KEY_SECRET,
+    const client = new Client('ACCOUNT_ID', {
+      accessKeyID: 'ACCESS_KEY_ID',
+      accessKeySecret: 'ACCESS_KEY_SECRET',
       region: 'cn-shanghai'
     });
     var sign = client.sign('PUT', {
@@ -103,7 +103,7 @@ describe('client test', function () {
       'content-type': 'text/xml',
       'x-mns-version': '2015-06-06'
     }, '/');
-    expect(sign).to.be('Ow4fGkafMMzI6WoUNkshjY7bMAc=');
+    expect(sign).to.be('A9zehggaYHHujmuRMxGIDrhWwx8=');
   });
 
   describe('API should ok', function () {
@@ -120,7 +120,7 @@ describe('client test', function () {
       const response = await client.createQueue(queueName);
       expect(response).to.be.ok();
       expect(response.code >= 200 && response.code < 300).to.be.ok();
-      expect(response.headers).to.have.property('location', 'http://1273463468343151.mns.cn-shanghai.aliyuncs.com/queues/test-queue');
+      expect(response.headers).to.have.property('location', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/queues/test-queue`);
     });
 
     it('listQueue should ok', async function() {
@@ -130,7 +130,7 @@ describe('client test', function () {
       const body = response.body;
       expect(body.length).to.above(0);
       const [queue] = body;
-      expect(queue).to.have.property('QueueURL', 'http://1273463468343151.mns.cn-shanghai.aliyuncs.com/queues/test-queue');
+      expect(queue).to.have.property('QueueURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/queues/test-queue`);
     });
 
     it('sendMessage should ok', async function() {
@@ -148,6 +148,9 @@ describe('client test', function () {
       var messages = [
         {
           MessageBody: 'just test it'
+        },
+        {
+          MessageBody: 'just test it 2'
         }
       ];
       const response = await client.batchSendMessage(queueName, messages);
@@ -211,11 +214,17 @@ describe('client test', function () {
       expect(res.code).to.be(204);
     });
 
+    it('deleteQueue shoule ok', async function() {
+      const res = await client.deleteQueue(queueName);
+      expect(res).to.be.ok();
+      expect(res.code).to.be(204);
+    });
+
     it('createTopic should ok', async function() {
       const response = await client.createTopic(topicName);
       expect(response).to.be.ok();
       expect(response.code >= 200 && response.code < 300).to.be.ok();
-      expect(response.headers).to.have.property('location', 'http://1273463468343151.mns.cn-shanghai.aliyuncs.com/topics/test-topic');
+      expect(response.headers).to.have.property('location', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/topics/test-topic`);
     });
 
     it('listTopic should ok', async function() {
@@ -225,7 +234,7 @@ describe('client test', function () {
       const body = response.body;
       expect(body.length).to.above(0);
       const [topic] = body;
-      expect(topic).to.have.property('TopicURL', 'http://1273463468343151.mns.cn-shanghai.aliyuncs.com/topics/test-topic');
+      expect(topic).to.have.property('TopicURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/topics/test-topic`);
     });
 
     it('getTopicAttributes should ok', async function() {
