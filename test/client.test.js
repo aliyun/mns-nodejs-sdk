@@ -123,6 +123,19 @@ describe('client test', function () {
       expect(response.headers).to.have.property('location', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/queues/test-queue`);
     });
 
+    it('getQueueAttributes should ok', async function() {
+      const response = await client.getQueueAttributes(queueName);
+      expect(response).to.be.ok();
+      expect(response.code >= 200 && response.code < 300).to.be.ok();
+      expect(response.body).to.have.property('QueueName', 'test-queue');
+    });
+
+    it('setQueueAttributes should ok', async function() {
+      const response = await client.setQueueAttributes(queueName);
+      expect(response).to.be.ok();
+      expect(response.code).to.be(204);
+    });
+
     it('listQueue should ok', async function() {
       const response = await client.listQueue();
       expect(response).to.be.ok();
@@ -161,6 +174,20 @@ describe('client test', function () {
       const [message] = body;
       expect(message).to.have.property('MessageId');
       expect(message).to.have.property('MessageBodyMD5');
+    });
+
+    it('peekMessage should ok', async function() {
+      const response = await client.peekMessage(queueName);
+      expect(response).to.be.ok();
+      expect(response.code).to.be(200);
+      const body = response.body;
+      expect(body).to.have.property('MessageId');
+      expect(body).to.have.property('MessageBodyMD5');
+      expect(body).to.have.property('MessageBody');
+      expect(body).to.have.property('EnqueueTime');
+      expect(body).to.have.property('FirstDequeueTime');
+      expect(body).to.have.property('DequeueCount');
+      expect(body).to.have.property('Priority');
     });
 
     it('receiveMessage should ok', async function() {
