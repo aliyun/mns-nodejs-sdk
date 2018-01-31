@@ -7,7 +7,12 @@
     "test": "test"
   },
   "scripts": {
-    "test": "make test"
+    "test": "make test",
+    "build-es5": "babel src/ -d lib/"
+  },
+  "git-pre-hooks": {
+    "pre-release": "npm run build-es5",
+    "post-release": "npm publish --access public"
   },
   "author": "Jackson Tian",
   "license": "MIT",
@@ -22,6 +27,11 @@
     "index.js"
   ],
   "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.4.0",
+    "babel-register": "^6.24.1",
+    "git-pre-hooks": "^1.2.0",
     "coveralls": "^2.13.1",
     "eslint": "^3.19.0",
     "expect.js": "^0.3.1",
