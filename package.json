@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "make test",
-    "build-es5": "babel src/ -d lib/"
+    "build-es5": "babel lib/ -d es5/"
   },
   "git-pre-hooks": {
     "pre-release": "npm run build-es5",

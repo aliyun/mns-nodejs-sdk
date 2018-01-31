@@ -7,5 +7,5 @@ function supportAsyncFunctions() {
     return false;
   }
 }
-module.exports = supportAsyncFunctions() ? require('./src/client.js') : require('./lib/client.js');
-
+module.exports = supportAsyncFunctions() ?
+  require('./lib/client.js') : require('./es5/client.js');
