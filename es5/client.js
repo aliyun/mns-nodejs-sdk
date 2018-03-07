@@ -491,7 +491,7 @@ var Client = function () {
     key: 'changeMessageVisibility',
     value: function changeMessageVisibility(queueName, receiptHandle, visibilityTimeout) {
       var url = `/queues/${queueName}/messages?` + `receiptHandle=${receiptHandle}&visibilityTimeout=${visibilityTimeout}`;
-      return this.put(url, 'ChangeVisibility');
+      return this.put(url, 'ChangeVisibility', '');
     }
 
     // Topic
