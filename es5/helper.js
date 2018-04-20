@@ -28,6 +28,10 @@ exports.extract = function extract(arr) {
 };
 
 function format(params) {
+  if (typeof params === 'string') {
+    return params;
+  }
+
   var xml = '';
   Object.keys(params).forEach(function (key) {
     var value = params[key];

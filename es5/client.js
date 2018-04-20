@@ -171,8 +171,8 @@ var Client = function () {
     }
   }, {
     key: 'delete',
-    value: function _delete(resource) {
-      return this.request('DELETE', resource, undefined, '');
+    value: function _delete(resource, type, body) {
+      return this.request('DELETE', resource, type, body);
     }
   }, {
     key: 'sign',
@@ -461,19 +461,24 @@ var Client = function () {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
-                body = toXMLBuffer('ReceiptHandles', receiptHandles);
+                body = toXMLBuffer('ReceiptHandles', receiptHandles, 'ReceiptHandle');
                 url = `/queues/${queueName}/messages`;
                 _context6.next = 4;
                 return this.delete(url, 'Errors', body);
 
               case 4:
                 response = _context6.sent;
-                subType = 'Error';
 
-                response.body = response.body[subType];
+                // 3种情况，普通失败，部分失败，全部成功
+                if (response.body) {
+                  subType = 'Error';
+                  // 部分失败
+
+                  response.body = response.body[subType];
+                }
                 return _context6.abrupt('return', response);
 
-              case 8:
+              case 7:
               case 'end':
                 return _context6.stop();
             }
