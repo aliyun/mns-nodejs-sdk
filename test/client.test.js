@@ -157,25 +157,6 @@ describe('client test', function () {
       expect(body).to.have.property('MessageBodyMD5');
     });
 
-    it('batchSendMessage should ok', async function() {
-      var messages = [
-        {
-          MessageBody: 'just test it'
-        },
-        {
-          MessageBody: 'just test it 2'
-        }
-      ];
-      const response = await client.batchSendMessage(queueName, messages);
-      expect(response).to.be.ok();
-      expect(response.code).to.be(201);
-      const body = response.body;
-      expect(body.length).to.above(0);
-      const [message] = body;
-      expect(message).to.have.property('MessageId');
-      expect(message).to.have.property('MessageBodyMD5');
-    });
-
     it('peekMessage should ok', async function() {
       const response = await client.peekMessage(queueName);
       expect(response).to.be.ok();
@@ -207,6 +188,10 @@ describe('client test', function () {
     });
 
     it('receiveMessage with waitSecond should ok', async function() {
+      // send message first
+      await client.sendMessage(queueName, {
+        MessageBody: 'just test it'
+      });
       const response = await client.receiveMessage(queueName, 10);
       expect(response).to.be.ok();
       expect(response.code).to.be(200);
@@ -223,6 +208,10 @@ describe('client test', function () {
     });
 
     it('deleteMessage with waitSecond should ok', async function() {
+      // send message first
+      await client.sendMessage(queueName, {
+        MessageBody: 'just test it'
+      });
       const response = await client.receiveMessage(queueName, 10);
       expect(response).to.be.ok();
       expect(response.code).to.be(200);
@@ -237,6 +226,37 @@ describe('client test', function () {
       expect(body).to.have.property('DequeueCount');
       expect(body).to.have.property('Priority');
       const res = await client.deleteMessage(queueName, body.ReceiptHandle);
+      expect(res).to.be.ok();
+      expect(res.code).to.be(204);
+    });
+
+    it('batchSendMessage should ok', async function() {
+      var messages = [
+        {
+          MessageBody: 'just test it'
+        },
+        {
+          MessageBody: 'just test it 2'
+        }
+      ];
+      const response = await client.batchSendMessage(queueName, messages);
+      expect(response).to.be.ok();
+      expect(response.code).to.be(201);
+      const body = response.body;
+      expect(body.length).to.above(0);
+      const [message] = body;
+      expect(message).to.have.property('MessageId');
+      expect(message).to.have.property('MessageBodyMD5');
+    });
+
+    it('batchDeleteMessage shoule ok', async function() {
+      const recived = await client.batchReceiveMessage(queueName, 2);
+      expect(recived).to.be.ok();
+      expect(recived.code).to.be(200);
+      const messageIds = recived.body.map((item) => {
+        return item.ReceiptHandle;
+      });
+      const res = await client.batchDeleteMessage(queueName, messageIds);
       expect(res).to.be.ok();
       expect(res.code).to.be(204);
     });
