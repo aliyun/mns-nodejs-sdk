@@ -96,7 +96,7 @@ var Client = function () {
 
                 debug('response body: %s', responseBody);
 
-                if (!(responseBody && contentType.match(/^(text|application)\/xml/))) {
+                if (!(responseBody && contentType.startsWith('text/xml'))) {
                   _context.next = 31;
                   break;
                 }
