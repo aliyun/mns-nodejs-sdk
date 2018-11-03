@@ -1,6 +1,6 @@
 {
   "name": "@alicloud/mns",
-  "version": "1.0.0-beta8",
+  "version": "1.0.0",
   "description": "> 该 SDK 并未完全实现所有文档所提及的功能，如果您想使用的功能并未实现，请提[issue](https://github.com/aliyun/aliyun-mns-nodejs-sdk/issues/new)以增加优先级。",
   "main": "index.js",
   "directories": {
