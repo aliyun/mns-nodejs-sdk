@@ -157,6 +157,17 @@ describe('client test', function () {
       expect(body).to.have.property('MessageBodyMD5');
     });
 
+    it('sendMessageTimeout should ok', async function() {
+      const response = await client.sendMessageTimeout(queueName, {
+        MessageBody: 'just test it'
+      }, 20000);
+      expect(response).to.be.ok();
+      expect(response.code).to.be(201);
+      const body = response.body;
+      expect(body).to.have.property('MessageId');
+      expect(body).to.have.property('MessageBodyMD5');
+    });
+
     it('peekMessage should ok', async function() {
       const response = await client.peekMessage(queueName);
       expect(response).to.be.ok();
