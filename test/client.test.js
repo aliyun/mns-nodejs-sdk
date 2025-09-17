@@ -33,7 +33,7 @@ describe('client test', function () {
         accessKeyID: 'accessKeyID',
         accessKeySecret: 'accessKeySecret'
       });
-    }).to.throwException(/must pass in "opts.region"/);
+    }).to.throwException(/must pass in "opts.region" when no custom endpoint is provided/);
 
     var client;
     client = new Client('accountid', {
@@ -59,6 +59,60 @@ describe('client test', function () {
       internal: true
     });
     expect(client.endpoint).to.be('https://accountid.mns.cn-shanghai-internal.aliyuncs.com');
+
+    // Test custom endpoint with http://
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      endpoint: 'http://custom.mns.example.com'
+    });
+    expect(client.endpoint).to.be('http://custom.mns.example.com');
+    expect(client.endpointDomain).to.be('custom.mns.example.com');
+
+    // Test custom endpoint with https://
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      endpoint: 'https://secure.mns.example.com'
+    });
+    expect(client.endpoint).to.be('https://secure.mns.example.com');
+    expect(client.endpointDomain).to.be('secure.mns.example.com');
+
+    // Test custom endpoint with port
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      endpoint: 'https://custom.mns.example.com:8080'
+    });
+    expect(client.endpoint).to.be('https://custom.mns.example.com:8080');
+    expect(client.endpointDomain).to.be('custom.mns.example.com:8080');
+
+    // Test that region is not required when custom endpoint is provided
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      endpoint: 'https://custom.mns.example.com'
+      // No region specified - should not throw
+    });
+    expect(client.endpoint).to.be('https://custom.mns.example.com');
+
+    // Test invalid endpoint without http/https prefix
+    expect(() => {
+      new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        endpoint: 'custom.mns.example.com'
+      });
+    }).to.throwException(/Custom endpoint must start with http:\/\/ or https:\/\//);
+
+    // Test invalid endpoint with other protocols
+    expect(() => {
+      new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        endpoint: 'ftp://custom.mns.example.com'
+      });
+    }).to.throwException(/Custom endpoint must start with http:\/\/ or https:\/\//);
   });
 
   it('listQueue with invalid accessKeyID', async function() {
