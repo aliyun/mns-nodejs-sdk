@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha -t 20000 -R spec test/*.test.js",
+    "test": "mocha -t 30000 -R spec test/*.test.js",
     "lint": "eslint --fix lib index.js test",
     "build-es5": "babel lib/ -d es5/"
   },

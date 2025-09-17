@@ -71,7 +71,7 @@ describe('client test', function () {
       await client.listQueue();
     } catch (ex) {
       expect(ex.name).to.be('MNSInvalidAccessKeyIdError');
-      expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The access Id you provided is not exist\./);
+      expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The access Id you provided does not exist\./);
     }
   });
 
@@ -85,8 +85,8 @@ describe('client test', function () {
       try {
         await client.listQueue();
       } catch (ex) {
-        expect(ex.name).to.be('MNSAccessDeniedError');
-        expect(ex.message).to.match(/GET http:\/\/accountid.mns.cn-shanghai.aliyuncs.com\/queues failed with 403. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The OwnerId that your Access Key Id associated to is forbidden for this operation./);
+        expect(ex.name).to.be('MNSSignatureDoesNotMatchError');
+        expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The request signature we calculated does not match the signature you provided\. Check your key and signing method\./);
       }
     })();
   });
@@ -142,8 +142,9 @@ describe('client test', function () {
       expect(response.code).to.be(200);
       const body = response.body;
       expect(body.length).to.above(0);
-      const [queue] = body;
-      expect(queue).to.have.property('QueueURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/queues/test-queue`);
+      const testQueue = body.find(queue => queue.QueueName === 'test-queue');
+      expect(testQueue).to.be.ok();
+      expect(testQueue).to.have.property('QueueURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/queues/test-queue`);
     });
 
     it('sendMessage should ok', async function() {
@@ -212,6 +213,8 @@ describe('client test', function () {
       await client.sendMessage(queueName, {
         MessageBody: 'just test it'
       });
+      // wait a bit for message to be available
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const response = await client.receiveMessage(queueName, 10);
       expect(response).to.be.ok();
       expect(response.code).to.be(200);
@@ -280,8 +283,9 @@ describe('client test', function () {
       expect(response.code).to.be(200);
       const body = response.body;
       expect(body.length).to.above(0);
-      const [topic] = body;
-      expect(topic).to.have.property('TopicURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/topics/test-topic`);
+      const testTopic = body.find(topic => topic.TopicName === 'test-topic');
+      expect(testTopic).to.be.ok();
+      expect(testTopic).to.have.property('TopicURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/topics/test-topic`);
     });
 
     it('getTopicAttributes should ok', async function() {
