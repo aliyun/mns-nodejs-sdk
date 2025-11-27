@@ -39,7 +39,11 @@ var Client = function () {
     this.accessKeyID = accessKeyID;
     assert(opts.accessKeySecret, 'must pass in "opts.accessKeySecret"');
     this.accessKeySecret = opts.accessKeySecret;
-    assert(opts.region, 'must pass in "opts.region"');
+
+    // Region is required only when no custom endpoint is provided
+    if (!opts.endpoint) {
+      assert(opts.region, 'must pass in "opts.region" when no custom endpoint is provided');
+    }
 
     var _getEndpoint = getEndpoint(accountid, opts),
         domain = _getEndpoint.domain,
@@ -50,6 +54,10 @@ var Client = function () {
 
     // security token
     this.securityToken = opts.securityToken;
+
+    // timeout configurations
+    this.readTimeout = opts.readTimeout || 40 * 1000; // 40s (read timeout)
+    this.connectTimeout = opts.connectTimeout || 30 * 1000; // 30s (connect timeout)
   }
 
   _createClass(Client, [{
@@ -58,7 +66,7 @@ var Client = function () {
       var _ref = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee(method, resource, type, requestBody) {
         var attentions = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : [];
         var opts = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : {};
-        var url, headers, response, code, contentType, responseBody, body, responseData, e, message, requestid, hostid, err;
+        var url, headers, requestOpts, response, code, contentType, responseBody, body, responseData, e, message, requestid, hostid, err;
         return _regenerator2.default.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
@@ -71,14 +79,20 @@ var Client = function () {
 
                 debug('request headers: %j', headers);
                 debug('request body: %s', requestBody.toString());
-                _context.next = 8;
-                return httpx.request(url, Object.assign(opts, {
+
+                // Apply default timeouts if not specified in opts
+                // Use separate readTimeout and connectTimeout to match Java SDK behavior
+                requestOpts = {
                   method: method,
                   headers: headers,
-                  data: requestBody
-                }));
+                  data: requestBody,
+                  readTimeout: opts.readTimeout || this.readTimeout,
+                  connectTimeout: opts.connectTimeout || this.connectTimeout
+                };
+                _context.next = 9;
+                return httpx.request(url, Object.assign(opts, requestOpts));
 
-              case 8:
+              case 9:
                 response = _context.sent;
 
 
@@ -88,27 +102,27 @@ var Client = function () {
                 contentType = response.headers['content-type'] || '';
                 // const contentLength = response.headers['content-length'];
 
-                _context.next = 15;
+                _context.next = 16;
                 return httpx.read(response, 'utf8');
 
-              case 15:
+              case 16:
                 responseBody = _context.sent;
 
                 debug('response body: %s', responseBody);
 
                 if (!(responseBody && (contentType.startsWith('text/xml') || contentType.startsWith('application/xml')))) {
-                  _context.next = 31;
+                  _context.next = 32;
                   break;
                 }
 
-                _context.next = 20;
+                _context.next = 21;
                 return parseXML(responseBody);
 
-              case 20:
+              case 21:
                 responseData = _context.sent;
 
                 if (!responseData.Error) {
-                  _context.next = 29;
+                  _context.next = 30;
                   break;
                 }
 
@@ -121,7 +135,7 @@ var Client = function () {
                 err.name = 'MNS' + extract(e.Code) + err.name;
                 throw err;
 
-              case 29:
+              case 30:
 
                 body = {};
                 Object.keys(responseData[type]).forEach(function (key) {
@@ -130,14 +144,14 @@ var Client = function () {
                   }
                 });
 
-              case 31:
+              case 32:
                 return _context.abrupt('return', {
                   code,
                   headers: getResponseHeaders(response.headers, attentions),
                   body: body
                 });
 
-              case 32:
+              case 33:
               case 'end':
                 return _context.stop();
             }
@@ -167,12 +181,18 @@ var Client = function () {
   }, {
     key: 'post',
     value: function post(resource, type, body) {
-      return this.request('POST', resource, type, body);
+      var attentions = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : [];
+      var opts = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : {};
+
+      return this.request('POST', resource, type, body, attentions, opts);
     }
   }, {
     key: 'delete',
     value: function _delete(resource, type, body) {
-      return this.request('DELETE', resource, type, body);
+      var attentions = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : [];
+      var opts = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : {};
+
+      return this.request('DELETE', resource, type, body, attentions, opts);
     }
   }, {
     key: 'sign',
@@ -288,7 +308,7 @@ var Client = function () {
         }, _callee2, this);
       }));
 
-      function listQueue(_x10, _x11, _x12) {
+      function listQueue(_x14, _x15, _x16) {
         return _ref2.apply(this, arguments);
       }
 
@@ -347,7 +367,7 @@ var Client = function () {
         }, _callee3, this);
       }));
 
-      function batchSendMessage(_x14, _x15) {
+      function batchSendMessage(_x18, _x19) {
         return _ref3.apply(this, arguments);
       }
 
@@ -399,7 +419,7 @@ var Client = function () {
         }, _callee4, this);
       }));
 
-      function batchReceiveMessage(_x16, _x17, _x18) {
+      function batchReceiveMessage(_x20, _x21, _x22) {
         return _ref4.apply(this, arguments);
       }
 
@@ -440,7 +460,7 @@ var Client = function () {
         }, _callee5, this);
       }));
 
-      function batchPeekMessage(_x19, _x20) {
+      function batchPeekMessage(_x23, _x24) {
         return _ref5.apply(this, arguments);
       }
 
@@ -486,7 +506,7 @@ var Client = function () {
         }, _callee6, this);
       }));
 
-      function batchDeleteMessage(_x21, _x22) {
+      function batchDeleteMessage(_x25, _x26) {
         return _ref6.apply(this, arguments);
       }
 
@@ -555,7 +575,7 @@ var Client = function () {
         }, _callee7, this);
       }));
 
-      function listTopic(_x24, _x25, _x26) {
+      function listTopic(_x28, _x29, _x30) {
         return _ref7.apply(this, arguments);
       }
 
