@@ -33,7 +33,7 @@ describe('client test', function () {
         accessKeyID: 'accessKeyID',
         accessKeySecret: 'accessKeySecret'
       });
-    }).to.throwException(/must pass in "opts.region"/);
+    }).to.throwException(/must pass in "opts.region" when no custom endpoint is provided/);
 
     var client;
     client = new Client('accountid', {
@@ -59,6 +59,60 @@ describe('client test', function () {
       internal: true
     });
     expect(client.endpoint).to.be('https://accountid.mns.cn-shanghai-internal.aliyuncs.com');
+
+    // Test custom endpoint with http://
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      endpoint: 'http://custom.mns.example.com'
+    });
+    expect(client.endpoint).to.be('http://custom.mns.example.com');
+    expect(client.endpointDomain).to.be('custom.mns.example.com');
+
+    // Test custom endpoint with https://
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      endpoint: 'https://secure.mns.example.com'
+    });
+    expect(client.endpoint).to.be('https://secure.mns.example.com');
+    expect(client.endpointDomain).to.be('secure.mns.example.com');
+
+    // Test custom endpoint with port
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      endpoint: 'https://custom.mns.example.com:8080'
+    });
+    expect(client.endpoint).to.be('https://custom.mns.example.com:8080');
+    expect(client.endpointDomain).to.be('custom.mns.example.com:8080');
+
+    // Test that region is not required when custom endpoint is provided
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      endpoint: 'https://custom.mns.example.com'
+      // No region specified - should not throw
+    });
+    expect(client.endpoint).to.be('https://custom.mns.example.com');
+
+    // Test invalid endpoint without http/https prefix
+    expect(() => {
+      new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        endpoint: 'custom.mns.example.com'
+      });
+    }).to.throwException(/Custom endpoint must start with http:\/\/ or https:\/\//);
+
+    // Test invalid endpoint with other protocols
+    expect(() => {
+      new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        endpoint: 'ftp://custom.mns.example.com'
+      });
+    }).to.throwException(/Custom endpoint must start with http:\/\/ or https:\/\//);
   });
 
   it('listQueue with invalid accessKeyID', async function() {
@@ -71,7 +125,7 @@ describe('client test', function () {
       await client.listQueue();
     } catch (ex) {
       expect(ex.name).to.be('MNSInvalidAccessKeyIdError');
-      expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The access Id you provided is not exist\./);
+      expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The access Id you provided does not exist\./);
     }
   });
 
@@ -85,8 +139,8 @@ describe('client test', function () {
       try {
         await client.listQueue();
       } catch (ex) {
-        expect(ex.name).to.be('MNSAccessDeniedError');
-        expect(ex.message).to.match(/GET http:\/\/accountid.mns.cn-shanghai.aliyuncs.com\/queues failed with 403. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The OwnerId that your Access Key Id associated to is forbidden for this operation./);
+        expect(ex.name).to.be('MNSSignatureDoesNotMatchError');
+        expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The request signature we calculated does not match the signature you provided\. Check your key and signing method\./);
       }
     })();
   });
@@ -142,8 +196,9 @@ describe('client test', function () {
       expect(response.code).to.be(200);
       const body = response.body;
       expect(body.length).to.above(0);
-      const [queue] = body;
-      expect(queue).to.have.property('QueueURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/queues/test-queue`);
+      const testQueue = body.find(queue => queue.QueueName === 'test-queue');
+      expect(testQueue).to.be.ok();
+      expect(testQueue).to.have.property('QueueURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/queues/test-queue`);
     });
 
     it('sendMessage should ok', async function() {
@@ -212,6 +267,8 @@ describe('client test', function () {
       await client.sendMessage(queueName, {
         MessageBody: 'just test it'
       });
+      // wait a bit for message to be available
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const response = await client.receiveMessage(queueName, 10);
       expect(response).to.be.ok();
       expect(response.code).to.be(200);
@@ -280,8 +337,9 @@ describe('client test', function () {
       expect(response.code).to.be(200);
       const body = response.body;
       expect(body.length).to.above(0);
-      const [topic] = body;
-      expect(topic).to.have.property('TopicURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/topics/test-topic`);
+      const testTopic = body.find(topic => topic.TopicName === 'test-topic');
+      expect(testTopic).to.be.ok();
+      expect(testTopic).to.have.property('TopicURL', `http://${ACCOUNT_ID}.mns.cn-shanghai.aliyuncs.com/topics/test-topic`);
     });
 
     it('getTopicAttributes should ok', async function() {

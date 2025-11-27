@@ -65,6 +65,22 @@ exports.toXMLBuffer = function (entityType, params, subType) {
 // http://{AccountId}.mns.cn-beijing-internal-vpc.aliyuncs.com
 
 exports.getEndpoint = function (accountid, opts) {
+  // If custom endpoint is provided, use it directly
+  if (opts.endpoint) {
+    // Validate that endpoint starts with http:// or https://
+    if (!opts.endpoint.startsWith('http://') && !opts.endpoint.startsWith('https://')) {
+      throw new Error('Custom endpoint must start with http:// or https://');
+    }
+
+    // Parse domain from endpoint URL
+    var url = new URL(opts.endpoint);
+    return {
+      endpoint: opts.endpoint,
+      domain: url.host
+    };
+  }
+
+  // Default behavior for region-based endpoints
   var protocol = opts.secure ? 'https' : 'http';
   var region = `${opts.region}`;
   if (opts.internal) {
