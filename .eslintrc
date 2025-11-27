@@ -50,7 +50,9 @@
     "describe": true,
     "it": true,
     "before": true,
-    "after": true
+    "after": true,
+    "Promise": true,
+    "URL": true
   },
   "parserOptions": {
     "ecmaVersion": 8,
