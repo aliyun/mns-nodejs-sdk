@@ -289,7 +289,7 @@ describe('client test', function () {
       expect(+client.stsTokenFreshTime).to.be.greaterThan(+oldFreshTime);
     });
 
-    it('should throw when callback returns null', async function() {
+    it('should keep old credentials when callback returns null', async function() {
       const client = new Client('accountid', {
         accessKeyID: 'accessKeyID',
         accessKeySecret: 'accessKeySecret',
@@ -298,15 +298,13 @@ describe('client test', function () {
         refreshSTSTokenInterval: 0,
         refreshSTSToken: async () => null
       });
-      try {
-        await client.refreshSTS();
-        expect().fail('should throw');
-      } catch (e) {
-        expect(e.message).to.be('refreshSTSToken callback must return credentials object');
-      }
+      // 刷新失败时不抛出错误，继续使用旧凭证
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('accessKeyID');
+      expect(client.securityToken).to.be('testToken');
     });
 
-    it('should throw when callback returns object without accessKeyId', async function() {
+    it('should keep old credentials when callback returns object without accessKeyId', async function() {
       const client = new Client('accountid', {
         accessKeyID: 'accessKeyID',
         accessKeySecret: 'accessKeySecret',
@@ -318,15 +316,11 @@ describe('client test', function () {
           securityToken: 'newToken'
         })
       });
-      try {
-        await client.refreshSTS();
-        expect().fail('should throw');
-      } catch (e) {
-        expect(e.message).to.be('refreshSTSToken callback must return credentials with accessKeyId');
-      }
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('accessKeyID');
     });
 
-    it('should throw when callback returns object without accessKeySecret', async function() {
+    it('should keep old credentials when callback returns object without accessKeySecret', async function() {
       const client = new Client('accountid', {
         accessKeyID: 'accessKeyID',
         accessKeySecret: 'accessKeySecret',
@@ -338,15 +332,11 @@ describe('client test', function () {
           securityToken: 'newToken'
         })
       });
-      try {
-        await client.refreshSTS();
-        expect().fail('should throw');
-      } catch (e) {
-        expect(e.message).to.be('refreshSTSToken callback must return credentials with accessKeySecret');
-      }
+      await client.refreshSTS();
+      expect(client.accessKeySecret).to.be('accessKeySecret');
     });
 
-    it('should throw when callback returns object without securityToken', async function() {
+    it('should keep old credentials when callback returns object without securityToken', async function() {
       const client = new Client('accountid', {
         accessKeyID: 'accessKeyID',
         accessKeySecret: 'accessKeySecret',
@@ -358,15 +348,11 @@ describe('client test', function () {
           accessKeySecret: 'newAccessKeySecret'
         })
       });
-      try {
-        await client.refreshSTS();
-        expect().fail('should throw');
-      } catch (e) {
-        expect(e.message).to.be('refreshSTSToken callback must return credentials with securityToken');
-      }
+      await client.refreshSTS();
+      expect(client.securityToken).to.be('testToken');
     });
 
-    it('should propagate callback errors', async function() {
+    it('should keep old credentials when callback throws error', async function() {
       const client = new Client('accountid', {
         accessKeyID: 'accessKeyID',
         accessKeySecret: 'accessKeySecret',
@@ -377,12 +363,40 @@ describe('client test', function () {
           throw new Error('Credential fetch failed');
         }
       });
-      try {
-        await client.refreshSTS();
-        expect().fail('should throw');
-      } catch (e) {
-        expect(e.message).to.be('Credential fetch failed');
-      }
+      // 刷新失败时不抛出错误，继续使用旧凭证
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('accessKeyID');
+      expect(client.securityToken).to.be('testToken');
+    });
+
+    it('should handle concurrent refresh requests', async function() {
+      let refreshCount = 0;
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => {
+          refreshCount++;
+          // 模拟异步操作
+          await new Promise(resolve => setTimeout(resolve, 50));
+          return {
+            accessKeyId: 'newAccessKeyId',
+            accessKeySecret: 'newAccessKeySecret',
+            securityToken: 'newToken'
+          };
+        }
+      });
+      // 并发调用 refreshSTS
+      await Promise.all([
+        client.refreshSTS(),
+        client.refreshSTS(),
+        client.refreshSTS()
+      ]);
+      // 由于并发控制，refreshSTSToken 只应被调用一次
+      expect(refreshCount).to.be(1);
+      expect(client.accessKeyID).to.be('newAccessKeyId');
     });
   });
 
