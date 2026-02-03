@@ -55,22 +55,190 @@ var Client = function () {
     // security token
     this.securityToken = opts.securityToken;
 
+    // STS token refresh configuration
+    this.refreshSTSToken = opts.refreshSTSToken;
+    this.refreshSTSTokenInterval = opts.refreshSTSTokenInterval !== undefined ? opts.refreshSTSTokenInterval : 300000; // 默认 5 分钟
+    this.stsTokenFreshTime = this.securityToken ? new Date() : null;
+    this._refreshingPromise = null; // 并发刷新锁
+
+    // 警告：提供了 securityToken 但没有刷新回调
+    if (this.securityToken && !this.refreshSTSToken) {
+      debug('Warning: securityToken provided without refreshSTSToken callback. ' + 'Token will not be automatically refreshed when it expires.');
+    }
+
     // timeout configurations
     this.readTimeout = opts.readTimeout || 40 * 1000; // 40s (read timeout)
     this.connectTimeout = opts.connectTimeout || 30 * 1000; // 30s (connect timeout)
   }
 
   _createClass(Client, [{
-    key: 'request',
+    key: 'refreshSTS',
     value: function () {
-      var _ref = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee(method, resource, type, requestBody) {
-        var attentions = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : [];
-        var opts = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : {};
-        var url, headers, requestOpts, response, code, contentType, responseBody, body, responseData, e, message, requestid, hostid, err;
+      var _ref = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
+        var now;
         return _regenerator2.default.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
+                if (!(!this.refreshSTSToken || !this.stsTokenFreshTime)) {
+                  _context.next = 2;
+                  break;
+                }
+
+                return _context.abrupt('return');
+
+              case 2:
+                now = new Date();
+
+                if (!(+now - +this.stsTokenFreshTime < this.refreshSTSTokenInterval)) {
+                  _context.next = 5;
+                  break;
+                }
+
+                return _context.abrupt('return');
+
+              case 5:
+                if (!this._refreshingPromise) {
+                  _context.next = 8;
+                  break;
+                }
+
+                debug('STS token refresh already in progress, waiting...');
+                return _context.abrupt('return', this._refreshingPromise);
+
+              case 8:
+
+                debug('STS token refresh triggered');
+
+                // 创建刷新任务并保存 Promise
+                this._refreshingPromise = this._doRefreshSTS(now);
+
+                _context.prev = 10;
+                _context.next = 13;
+                return this._refreshingPromise;
+
+              case 13:
+                _context.prev = 13;
+
+                this._refreshingPromise = null;
+                return _context.finish(13);
+
+              case 16:
+              case 'end':
+                return _context.stop();
+            }
+          }
+        }, _callee, this, [[10,, 13, 16]]);
+      }));
+
+      function refreshSTS() {
+        return _ref.apply(this, arguments);
+      }
+
+      return refreshSTS;
+    }()
+  }, {
+    key: '_doRefreshSTS',
+    value: function () {
+      var _ref2 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee2(now) {
+        var credentials, accessKeyId;
+        return _regenerator2.default.wrap(function _callee2$(_context2) {
+          while (1) {
+            switch (_context2.prev = _context2.next) {
+              case 0:
+                _context2.prev = 0;
+                _context2.next = 3;
+                return this.refreshSTSToken();
+
+              case 3:
+                credentials = _context2.sent;
+
+                if (credentials) {
+                  _context2.next = 6;
+                  break;
+                }
+
+                throw new Error('refreshSTSToken callback must return credentials object');
+
+              case 6:
+                accessKeyId = credentials.accessKeyId || credentials.accessKeyID;
+
+                if (accessKeyId) {
+                  _context2.next = 9;
+                  break;
+                }
+
+                throw new Error('refreshSTSToken callback must return credentials with accessKeyId');
+
+              case 9:
+                if (credentials.accessKeySecret) {
+                  _context2.next = 11;
+                  break;
+                }
+
+                throw new Error('refreshSTSToken callback must return credentials with accessKeySecret');
+
+              case 11:
+                if (credentials.securityToken) {
+                  _context2.next = 13;
+                  break;
+                }
+
+                throw new Error('refreshSTSToken callback must return credentials with securityToken');
+
+              case 13:
+
+                // 更新凭证
+                this.accessKeyID = accessKeyId;
+                this.accessKeySecret = credentials.accessKeySecret;
+                this.securityToken = credentials.securityToken;
+                this.stsTokenFreshTime = now;
+
+                debug('STS token refreshed successfully');
+                _context2.next = 24;
+                break;
+
+              case 20:
+                _context2.prev = 20;
+                _context2.t0 = _context2['catch'](0);
+
+                // 刷新失败时记录警告，继续使用旧凭证
+                debug('STS token refresh failed: %s. Will continue with current credentials.', _context2.t0.message);
+                // 更新刷新时间，避免频繁重试
+                this.stsTokenFreshTime = now;
+                // 不抛出错误，让请求继续使用当前凭证
+
+              case 24:
+              case 'end':
+                return _context2.stop();
+            }
+          }
+        }, _callee2, this, [[0, 20]]);
+      }));
+
+      function _doRefreshSTS(_x) {
+        return _ref2.apply(this, arguments);
+      }
+
+      return _doRefreshSTS;
+    }()
+  }, {
+    key: 'request',
+    value: function () {
+      var _ref3 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee3(method, resource, type, requestBody) {
+        var attentions = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : [];
+        var opts = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : {};
+        var url, headers, requestOpts, response, code, contentType, responseBody, body, responseData, e, message, requestid, hostid, err;
+        return _regenerator2.default.wrap(function _callee3$(_context3) {
+          while (1) {
+            switch (_context3.prev = _context3.next) {
+              case 0:
+                _context3.next = 2;
+                return this.refreshSTS();
+
+              case 2:
+                // 请求前刷新 STS Token
+
                 url = `${this.endpoint}${resource}`;
 
                 debug('url: %s', url);
@@ -89,11 +257,11 @@ var Client = function () {
                   readTimeout: opts.readTimeout || this.readTimeout,
                   connectTimeout: opts.connectTimeout || this.connectTimeout
                 };
-                _context.next = 9;
+                _context3.next = 11;
                 return httpx.request(url, Object.assign(opts, requestOpts));
 
-              case 9:
-                response = _context.sent;
+              case 11:
+                response = _context3.sent;
 
 
                 debug('statusCode %s', response.statusCode);
@@ -102,27 +270,27 @@ var Client = function () {
                 contentType = response.headers['content-type'] || '';
                 // const contentLength = response.headers['content-length'];
 
-                _context.next = 16;
+                _context3.next = 18;
                 return httpx.read(response, 'utf8');
 
-              case 16:
-                responseBody = _context.sent;
+              case 18:
+                responseBody = _context3.sent;
 
                 debug('response body: %s', responseBody);
 
                 if (!(responseBody && (contentType.startsWith('text/xml') || contentType.startsWith('application/xml')))) {
-                  _context.next = 32;
+                  _context3.next = 34;
                   break;
                 }
 
-                _context.next = 21;
+                _context3.next = 23;
                 return parseXML(responseBody);
 
-              case 21:
-                responseData = _context.sent;
+              case 23:
+                responseData = _context3.sent;
 
                 if (!responseData.Error) {
-                  _context.next = 30;
+                  _context3.next = 32;
                   break;
                 }
 
@@ -135,7 +303,7 @@ var Client = function () {
                 err.name = 'MNS' + extract(e.Code) + err.name;
                 throw err;
 
-              case 30:
+              case 32:
 
                 body = {};
                 Object.keys(responseData[type]).forEach(function (key) {
@@ -144,23 +312,23 @@ var Client = function () {
                   }
                 });
 
-              case 32:
-                return _context.abrupt('return', {
+              case 34:
+                return _context3.abrupt('return', {
                   code,
                   headers: getResponseHeaders(response.headers, attentions),
                   body: body
                 });
 
-              case 33:
+              case 35:
               case 'end':
-                return _context.stop();
+                return _context3.stop();
             }
           }
-        }, _callee, this);
+        }, _callee3, this);
       }));
 
-      function request(_x3, _x4, _x5, _x6) {
-        return _ref.apply(this, arguments);
+      function request(_x4, _x5, _x6, _x7) {
+        return _ref3.apply(this, arguments);
       }
 
       return request;
@@ -268,11 +436,11 @@ var Client = function () {
   }, {
     key: 'listQueue',
     value: function () {
-      var _ref2 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee2(start, limit, prefix) {
+      var _ref4 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee4(start, limit, prefix) {
         var customHeaders, subType, response;
-        return _regenerator2.default.wrap(function _callee2$(_context2) {
+        return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
-            switch (_context2.prev = _context2.next) {
+            switch (_context4.prev = _context4.next) {
               case 0:
                 customHeaders = {};
 
@@ -289,27 +457,27 @@ var Client = function () {
                 }
 
                 subType = 'Queue';
-                _context2.next = 7;
+                _context4.next = 7;
                 return this.get('/queues', 'Queues', {
                   headers: customHeaders
                 });
 
               case 7:
-                response = _context2.sent;
+                response = _context4.sent;
 
                 response.body = response.body[subType];
-                return _context2.abrupt('return', response);
+                return _context4.abrupt('return', response);
 
               case 10:
               case 'end':
-                return _context2.stop();
+                return _context4.stop();
             }
           }
-        }, _callee2, this);
+        }, _callee4, this);
       }));
 
-      function listQueue(_x14, _x15, _x16) {
-        return _ref2.apply(this, arguments);
+      function listQueue(_x15, _x16, _x17) {
+        return _ref4.apply(this, arguments);
       }
 
       return listQueue;
@@ -341,34 +509,34 @@ var Client = function () {
   }, {
     key: 'batchSendMessage',
     value: function () {
-      var _ref3 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee3(queueName, params) {
+      var _ref5 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee5(queueName, params) {
         var url, subType, body, response;
-        return _regenerator2.default.wrap(function _callee3$(_context3) {
+        return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
-            switch (_context3.prev = _context3.next) {
+            switch (_context5.prev = _context5.next) {
               case 0:
                 url = `/queues/${queueName}/messages`;
                 subType = 'Message';
                 body = toXMLBuffer('Messages', params, subType);
-                _context3.next = 5;
+                _context5.next = 5;
                 return this.post(url, 'Messages', body);
 
               case 5:
-                response = _context3.sent;
+                response = _context5.sent;
 
                 response.body = response.body[subType];
-                return _context3.abrupt('return', response);
+                return _context5.abrupt('return', response);
 
               case 8:
               case 'end':
-                return _context3.stop();
+                return _context5.stop();
             }
           }
-        }, _callee3, this);
+        }, _callee5, this);
       }));
 
-      function batchSendMessage(_x18, _x19) {
-        return _ref3.apply(this, arguments);
+      function batchSendMessage(_x19, _x20) {
+        return _ref5.apply(this, arguments);
       }
 
       return batchSendMessage;
@@ -387,11 +555,11 @@ var Client = function () {
   }, {
     key: 'batchReceiveMessage',
     value: function () {
-      var _ref4 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee4(queueName, numOfMessages, waitSeconds) {
+      var _ref6 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee6(queueName, numOfMessages, waitSeconds) {
         var url, subType, response;
-        return _regenerator2.default.wrap(function _callee4$(_context4) {
+        return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
-            switch (_context4.prev = _context4.next) {
+            switch (_context6.prev = _context6.next) {
               case 0:
                 url = `/queues/${queueName}/messages?numOfMessages=${numOfMessages}`;
 
@@ -402,25 +570,25 @@ var Client = function () {
                 subType = 'Message';
                 // 31000 31s +1s max waitSeconds is 30s
 
-                _context4.next = 5;
+                _context6.next = 5;
                 return this.get(url, 'Messages', { timeout: 31000 });
 
               case 5:
-                response = _context4.sent;
+                response = _context6.sent;
 
                 response.body = response.body[subType];
-                return _context4.abrupt('return', response);
+                return _context6.abrupt('return', response);
 
               case 8:
               case 'end':
-                return _context4.stop();
+                return _context6.stop();
             }
           }
-        }, _callee4, this);
+        }, _callee6, this);
       }));
 
-      function batchReceiveMessage(_x20, _x21, _x22) {
-        return _ref4.apply(this, arguments);
+      function batchReceiveMessage(_x21, _x22, _x23) {
+        return _ref6.apply(this, arguments);
       }
 
       return batchReceiveMessage;
@@ -433,35 +601,35 @@ var Client = function () {
   }, {
     key: 'batchPeekMessage',
     value: function () {
-      var _ref5 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee5(queueName, numOfMessages) {
+      var _ref7 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee7(queueName, numOfMessages) {
         var url, subType, response;
-        return _regenerator2.default.wrap(function _callee5$(_context5) {
+        return _regenerator2.default.wrap(function _callee7$(_context7) {
           while (1) {
-            switch (_context5.prev = _context5.next) {
+            switch (_context7.prev = _context7.next) {
               case 0:
                 url = `/queues/${queueName}/messages?` + `peekonly=true&numOfMessages=${numOfMessages}`;
                 subType = 'Message';
                 // 31000 31s +1s max waitSeconds is 30s
 
-                _context5.next = 4;
+                _context7.next = 4;
                 return this.get(url, 'Messages');
 
               case 4:
-                response = _context5.sent;
+                response = _context7.sent;
 
                 response.body = response.body[subType];
-                return _context5.abrupt('return', response);
+                return _context7.abrupt('return', response);
 
               case 7:
               case 'end':
-                return _context5.stop();
+                return _context7.stop();
             }
           }
-        }, _callee5, this);
+        }, _callee7, this);
       }));
 
-      function batchPeekMessage(_x23, _x24) {
-        return _ref5.apply(this, arguments);
+      function batchPeekMessage(_x24, _x25) {
+        return _ref7.apply(this, arguments);
       }
 
       return batchPeekMessage;
@@ -475,19 +643,19 @@ var Client = function () {
   }, {
     key: 'batchDeleteMessage',
     value: function () {
-      var _ref6 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee6(queueName, receiptHandles) {
+      var _ref8 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee8(queueName, receiptHandles) {
         var body, url, response, subType;
-        return _regenerator2.default.wrap(function _callee6$(_context6) {
+        return _regenerator2.default.wrap(function _callee8$(_context8) {
           while (1) {
-            switch (_context6.prev = _context6.next) {
+            switch (_context8.prev = _context8.next) {
               case 0:
                 body = toXMLBuffer('ReceiptHandles', receiptHandles, 'ReceiptHandle');
                 url = `/queues/${queueName}/messages`;
-                _context6.next = 4;
+                _context8.next = 4;
                 return this.delete(url, 'Errors', body);
 
               case 4:
-                response = _context6.sent;
+                response = _context8.sent;
 
                 // 3种情况，普通失败，部分失败，全部成功
                 if (response.body) {
@@ -496,18 +664,18 @@ var Client = function () {
 
                   response.body = response.body[subType];
                 }
-                return _context6.abrupt('return', response);
+                return _context8.abrupt('return', response);
 
               case 7:
               case 'end':
-                return _context6.stop();
+                return _context8.stop();
             }
           }
-        }, _callee6, this);
+        }, _callee8, this);
       }));
 
-      function batchDeleteMessage(_x25, _x26) {
-        return _ref6.apply(this, arguments);
+      function batchDeleteMessage(_x26, _x27) {
+        return _ref8.apply(this, arguments);
       }
 
       return batchDeleteMessage;
@@ -535,11 +703,11 @@ var Client = function () {
   }, {
     key: 'listTopic',
     value: function () {
-      var _ref7 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee7(start, limit, prefix) {
+      var _ref9 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee9(start, limit, prefix) {
         var customHeaders, subType, response;
-        return _regenerator2.default.wrap(function _callee7$(_context7) {
+        return _regenerator2.default.wrap(function _callee9$(_context9) {
           while (1) {
-            switch (_context7.prev = _context7.next) {
+            switch (_context9.prev = _context9.next) {
               case 0:
                 customHeaders = {};
 
@@ -556,27 +724,27 @@ var Client = function () {
                 }
 
                 subType = 'Topic';
-                _context7.next = 7;
+                _context9.next = 7;
                 return this.get('/topics', 'Topics', {
                   headers: customHeaders
                 });
 
               case 7:
-                response = _context7.sent;
+                response = _context9.sent;
 
                 response.body = response.body[subType];
-                return _context7.abrupt('return', response);
+                return _context9.abrupt('return', response);
 
               case 10:
               case 'end':
-                return _context7.stop();
+                return _context9.stop();
             }
           }
-        }, _callee7, this);
+        }, _callee9, this);
       }));
 
-      function listTopic(_x28, _x29, _x30) {
-        return _ref7.apply(this, arguments);
+      function listTopic(_x29, _x30, _x31) {
+        return _ref9.apply(this, arguments);
       }
 
       return listTopic;
