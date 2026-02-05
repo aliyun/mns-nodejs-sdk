@@ -113,6 +113,37 @@ describe('client test', function () {
         endpoint: 'ftp://custom.mns.example.com'
       });
     }).to.throwException(/Custom endpoint must start with http:\/\/ or https:\/\//);
+
+    // Test STS token refresh configuration
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      region: 'cn-shanghai',
+      securityToken: 'testToken',
+      refreshSTSToken: async () => ({}),
+      refreshSTSTokenInterval: 60000
+    });
+    expect(client.refreshSTSToken).to.be.a('function');
+    expect(client.refreshSTSTokenInterval).to.be(60000);
+    expect(client.stsTokenFreshTime).to.be.a(Date);
+
+    // Test default refreshSTSTokenInterval
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      region: 'cn-shanghai',
+      securityToken: 'testToken',
+      refreshSTSToken: async () => ({})
+    });
+    expect(client.refreshSTSTokenInterval).to.be(300000); // 默认 5 分钟
+
+    // Test stsTokenFreshTime is null when no securityToken
+    client = new Client('accountid', {
+      accessKeyID: 'accessKeyID',
+      accessKeySecret: 'accessKeySecret',
+      region: 'cn-shanghai'
+    });
+    expect(client.stsTokenFreshTime).to.be(null);
   });
 
   it('listQueue with invalid accessKeyID', async function() {
@@ -143,6 +174,230 @@ describe('client test', function () {
         expect(ex.message).to.match(/GET http:\/\/accountid\.mns\.cn-shanghai\.aliyuncs\.com\/queues failed with 403\. requestid: .{24}, hostid: http:\/\/accountid.mns.cn-shanghai.aliyuncs.com, message: The request signature we calculated does not match the signature you provided\. Check your key and signing method\./);
       }
     })();
+  });
+
+  describe('STS token refresh', function() {
+    it('should not refresh when refreshSTSToken is not provided', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken'
+      });
+      // Should not throw
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('accessKeyID');
+    });
+
+    it('should not refresh when stsTokenFreshTime is null', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        refreshSTSToken: async () => ({
+          accessKeyId: 'newAccessKeyId',
+          accessKeySecret: 'newAccessKeySecret',
+          securityToken: 'newToken'
+        })
+      });
+      // Should not throw and not refresh (no initial securityToken)
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('accessKeyID');
+    });
+
+    it('should not refresh when token has not expired', async function() {
+      let refreshCalled = false;
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 300000, // 5 minutes
+        refreshSTSToken: async () => {
+          refreshCalled = true;
+          return {
+            accessKeyId: 'newAccessKeyId',
+            accessKeySecret: 'newAccessKeySecret',
+            securityToken: 'newToken'
+          };
+        }
+      });
+      await client.refreshSTS();
+      expect(refreshCalled).to.be(false);
+      expect(client.accessKeyID).to.be('accessKeyID');
+    });
+
+    it('should refresh when token has expired', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0, // immediate refresh
+        refreshSTSToken: async () => {
+          return {
+            accessKeyId: 'newAccessKeyId',
+            accessKeySecret: 'newAccessKeySecret',
+            securityToken: 'newToken'
+          };
+        }
+      });
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('newAccessKeyId');
+      expect(client.accessKeySecret).to.be('newAccessKeySecret');
+      expect(client.securityToken).to.be('newToken');
+    });
+
+    it('should support accessKeyID (uppercase) in callback response', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => {
+          return {
+            accessKeyID: 'newAccessKeyID', // uppercase
+            accessKeySecret: 'newAccessKeySecret',
+            securityToken: 'newToken'
+          };
+        }
+      });
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('newAccessKeyID');
+    });
+
+    it('should update stsTokenFreshTime after refresh', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => {
+          return {
+            accessKeyId: 'newAccessKeyId',
+            accessKeySecret: 'newAccessKeySecret',
+            securityToken: 'newToken'
+          };
+        }
+      });
+      const oldFreshTime = client.stsTokenFreshTime;
+      // Wait a bit to ensure time difference
+      await new Promise(resolve => setTimeout(resolve, 10));
+      await client.refreshSTS();
+      expect(+client.stsTokenFreshTime).to.be.greaterThan(+oldFreshTime);
+    });
+
+    it('should keep old credentials when callback returns null', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => null
+      });
+      // 刷新失败时不抛出错误，继续使用旧凭证
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('accessKeyID');
+      expect(client.securityToken).to.be('testToken');
+    });
+
+    it('should keep old credentials when callback returns object without accessKeyId', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => ({
+          accessKeySecret: 'newAccessKeySecret',
+          securityToken: 'newToken'
+        })
+      });
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('accessKeyID');
+    });
+
+    it('should keep old credentials when callback returns object without accessKeySecret', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => ({
+          accessKeyId: 'newAccessKeyId',
+          securityToken: 'newToken'
+        })
+      });
+      await client.refreshSTS();
+      expect(client.accessKeySecret).to.be('accessKeySecret');
+    });
+
+    it('should keep old credentials when callback returns object without securityToken', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => ({
+          accessKeyId: 'newAccessKeyId',
+          accessKeySecret: 'newAccessKeySecret'
+        })
+      });
+      await client.refreshSTS();
+      expect(client.securityToken).to.be('testToken');
+    });
+
+    it('should keep old credentials when callback throws error', async function() {
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => {
+          throw new Error('Credential fetch failed');
+        }
+      });
+      // 刷新失败时不抛出错误，继续使用旧凭证
+      await client.refreshSTS();
+      expect(client.accessKeyID).to.be('accessKeyID');
+      expect(client.securityToken).to.be('testToken');
+    });
+
+    it('should handle concurrent refresh requests', async function() {
+      let refreshCount = 0;
+      const client = new Client('accountid', {
+        accessKeyID: 'accessKeyID',
+        accessKeySecret: 'accessKeySecret',
+        region: 'cn-shanghai',
+        securityToken: 'testToken',
+        refreshSTSTokenInterval: 0,
+        refreshSTSToken: async () => {
+          refreshCount++;
+          // 模拟异步操作
+          await new Promise(resolve => setTimeout(resolve, 50));
+          return {
+            accessKeyId: 'newAccessKeyId',
+            accessKeySecret: 'newAccessKeySecret',
+            securityToken: 'newToken'
+          };
+        }
+      });
+      // 并发调用 refreshSTS
+      await Promise.all([
+        client.refreshSTS(),
+        client.refreshSTS(),
+        client.refreshSTS()
+      ]);
+      // 由于并发控制，refreshSTSToken 只应被调用一次
+      expect(refreshCount).to.be(1);
+      expect(client.accessKeyID).to.be('newAccessKeyId');
+    });
   });
 
   it('sign', function() {
